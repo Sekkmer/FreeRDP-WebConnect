@@ -28,6 +28,8 @@
 
 #include "rdpcommon.hpp"
 
+#include "lib_wshandler.hpp"
+
 namespace wsgate {
 
     /**
@@ -66,7 +68,7 @@ namespace wsgate {
              * @param h The WebSockets handler to be used for communication with the client.
              * @param rsh The Raw Socket handler that is used for starting the RDP session
              */
-            RDP(wspp::wshandler *h, MyRawSocketHandler *rsh, EmbeddedContext embeddedContext = CONTEXT_PLAIN);
+            RDP(libwsgate::wshandler *h, /* MyRawSocketHandler *rsh, */ EmbeddedContext embeddedContext = CONTEXT_PLAIN);
             /// Destructor
             virtual ~RDP();
 
@@ -101,7 +103,7 @@ namespace wsgate {
              * Called from the WebSockets codec, whenever the client sent a message.
              * @param data The binary payload of the incoming message.
              */
-            void OnWsMessage(const std::string & data);
+            void OnWsMessage(const char* data, size_t length);
             /**
              * Retrieves a custom cursor tuple by ID.
              * @param cid Unique cursor ID (valid for current session).
@@ -180,8 +182,8 @@ namespace wsgate {
             rdpSettings *m_rdpSettings;
             bool m_bThreadLoop;
             pthread_t m_worker;
-            wspp::wshandler *m_wshandler;
-            MyRawSocketHandler *m_rsh;
+            libwsgate::wshandler *m_wshandler;
+            // MyRawSocketHandler *m_rsh;
             std::string m_errMsg;
             State m_State;
             Update *m_pUpdate;

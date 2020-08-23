@@ -24,7 +24,7 @@
 #include <vector>
 #include <map>
 #include <boost/algorithm/string.hpp>
-#include <ehs/ehs.h>
+// #include <ehs/ehs.h>
 #include <boost/lexical_cast.hpp>
 #include "logging.hpp"
 
@@ -37,8 +37,8 @@ namespace wsgate {
 
     static const char * const ws_magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-    int nFormValue(HttpRequest *request, const string & name, int defval);
-    void SplitUserDomain(const string& fullUsername, string& username, string& domain);
+//    int nFormValue(HttpRequest *request, const string & name, int defval);
+//    void SplitUserDomain(const string& fullUsername, string& username, string& domain);
 }
 
 #endif

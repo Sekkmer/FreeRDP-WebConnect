@@ -25,11 +25,11 @@
 #endif
 
 extern "C" {
-#include <freerdp/input.h>
-#include <freerdp/gdi/gdi.h>
+#include <freerdp2/freerdp/input.h>
+#include <freerdp2/freerdp/gdi/gdi.h>
 }
-#include <freerdp/freerdp.h>
-#include <freerdp/codec/color.h>
+#include <freerdp2/freerdp/freerdp.h>
+#include <freerdp2/freerdp/codec/color.h>
 
 #include "wsgate.hpp"
 #include "wshandler.hpp"
@@ -155,7 +155,7 @@ namespace wsgate {
         /**
          * The current color space conversion parameter.
          */
-        HCLRCONV clrconv;
+        // HCLRCONV clrconv;
     } wsgContext;
 }
 

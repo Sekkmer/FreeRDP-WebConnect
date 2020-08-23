@@ -24,14 +24,17 @@
 #include <stdint.h>
 #endif
 
+#include <cstring>
+
 #include "rdpcommon.hpp"
 #include "Primary.hpp"
+#include "lib_freerdp_helper.hpp"
 
 namespace wsgate {
 
     using namespace std;
 
-    Primary::Primary(wspp::wshandler *h)
+    Primary::Primary(libwsgate::wshandler *h)
         : m_wshandler(h)
     { }
 
@@ -71,7 +74,7 @@ namespace wsgate {
     void Primary::PatBlt(rdpContext *ctx, PATBLT_ORDER* po) {
         // log::debug << __PRETTY_FUNCTION__ << endl;
         uint32_t rop3 = gdi_rop3_code(po->bRop);
-        HCLRCONV hclrconv = reinterpret_cast<wsgContext *>(ctx)->clrconv;
+        // HCLRCONV hclrconv = reinterpret_cast<wsgContext *>(ctx)->clrconv;
         if (GDI_BS_SOLID == po->brush.style) {
 #ifdef DBGLOG_PATBLT
             log::debug << "PB S " << hex << rop3 << dec << endl;
@@ -90,11 +93,10 @@ namespace wsgate {
                 po->nTopRect,
                 po->nWidth,
                 po->nHeight,
-                freerdp_color_convert_var(po->foreColor, 16, 32, hclrconv),
+                freerdp_color_convert_var(po->foreColor, 16, 32 /*, hclrconv */),
                 rop3
             };
-            string buf(reinterpret_cast<const char *>(&tmp), sizeof(tmp));
-            m_wshandler->send_binary(buf);
+            m_wshandler->send_binary_t(tmp);
         } else if (GDI_BS_PATTERN ==  po->brush.style) {
 #ifdef DBGLOG_PATBLT
             log::debug << "PB P " << hex << rop3 << dec << endl;
@@ -138,23 +140,27 @@ namespace wsgate {
             sbo->nXSrc,
             sbo->nYSrc
         };
-        string buf(reinterpret_cast<const char *>(&tmp), sizeof(tmp));
-        m_wshandler->send_binary(buf);
+        m_wshandler->send_binary_t(tmp);
     }
 
     void Primary::OpaqueRect(rdpContext* context, OPAQUE_RECT_ORDER* oro) {
         // log::debug << __PRETTY_FUNCTION__ << endl;
-        HCLRCONV hclrconv = reinterpret_cast<wsgContext *>(context)->clrconv;
+        // HCLRCONV hclrconv = reinterpret_cast<wsgContext *>(context)->clrconv;
         uint32_t svcolor = oro->color;
-        oro->color = freerdp_color_convert_var(oro->color, 16, 32, hclrconv);
+        oro->color = freerdp_color_convert_var(oro->color, 16, 32 /*, hclrconv */);
         uint32_t op = WSOP_SC_OPAQUERECT;
 #ifdef DBGLOG_OPAQUERECT
         log::debug << "OR" << " x=" << oro->nLeftRect << " y=" << oro->nTopRect
             << " w=" << oro->nWidth << " h=" << oro->nHeight << " col=0x" << hex << oro->color << dec << endl;
 #endif
-        string buf(reinterpret_cast<const char *>(&op), sizeof(op));
-        buf.append(reinterpret_cast<const char *>(oro), sizeof(OPAQUE_RECT_ORDER));
-        m_wshandler->send_binary(buf);
+        struct {
+            uint32_t op;
+            OPAQUE_RECT_ORDER _oro;
+        } tmp = {
+            WSOP_SC_OPAQUERECT,
+            *oro
+        };
+        m_wshandler->send_binary_t(tmp);
         oro->color = svcolor;
     }
 
@@ -176,8 +182,8 @@ namespace wsgate {
 
     void Primary::MultiOpaqueRect(rdpContext* context, MULTI_OPAQUE_RECT_ORDER* moro) {
         // log::debug << __PRETTY_FUNCTION__ << endl;
-        HCLRCONV hclrconv = reinterpret_cast<wsgContext *>(context)->clrconv;
-        uint32_t color = freerdp_color_convert_var(moro->color, 16, 32, hclrconv);
+        // HCLRCONV hclrconv = reinterpret_cast<wsgContext *>(context)->clrconv;
+        uint32_t color = freerdp_color_convert_var(moro->color, 16, 32);
 #ifdef DBGLOG_MULTI_OPAQUERECT
         log::debug << "MOR color=0x" << hex << moro->color << " (0x" << color << ")" << dec
             << " nr=" << moro->numRectangles << endl;
@@ -187,15 +193,21 @@ namespace wsgate {
                 << " w=" << r->width << " h=" << r->height << endl;
         }
 #endif
-        uint32_t nr = moro->numRectangles;
-        uint32_t op = WSOP_SC_MULTI_OPAQUERECT;
-        string buf(reinterpret_cast<const char *>(&op), sizeof(op));
-        buf.append(reinterpret_cast<const char *>(&color), sizeof(color));
-        buf.append(reinterpret_cast<const char *>(&nr), sizeof(nr));
+        struct {
+            uint32_t op;
+            uint32_t _color;
+            uint32_t nr;
+        } tmp = {
+            WSOP_SC_MULTI_OPAQUERECT,
+            color,
+            moro->numRectangles,
+        };
+        auto ptr = new byte[sizeof(tmp) + sizeof(DELTA_RECT) * moro->numRectangles];
+        std::memcpy(ptr, &tmp, sizeof(tmp));
         // Rectangles start at index 1 and rect at index 0 is always 0,0,0,0
-        buf.append(reinterpret_cast<const char *>(&moro->rectangles[1]),
-                sizeof(DELTA_RECT) * nr);
-        m_wshandler->send_binary(buf);
+        std::memcpy(ptr + sizeof(tmp), &moro->rectangles[1], sizeof(DELTA_RECT) * moro->numRectangles);
+        m_wshandler->send_binary(ptr, sizeof(tmp) + sizeof(DELTA_RECT) * moro->numRectangles);
+        delete[] ptr;
     }
 
     void Primary::MultiDrawNineGrid(rdpContext*, MULTI_DRAW_NINE_GRID_ORDER*) {

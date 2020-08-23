@@ -23,7 +23,7 @@
 
 #include <sstream>
 #include <iomanip>
-
+#include <iostream>
 #include <pthread.h>
 
 #include "RDP.hpp"
@@ -34,12 +34,12 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include "myrawsocket.hpp"
+// #include "myrawsocket.hpp"
 #include "base64.hpp"
 
 #include "btexception.hpp"
 extern "C" {
-#include <freerdp/locale/keyboard.h>
+#include <freerdp2/freerdp/locale/keyboard.h>
 }
 
 
@@ -319,7 +319,7 @@ namespace wsgate {
         uint32_t id;
     } MyPointer;
 
-    RDP::RDP(wspp::wshandler *h, MyRawSocketHandler *rsh, EmbeddedContext embeddedContext)
+    RDP::RDP(libwsgate::wshandler *h, /* MyRawSocketHandler *rsh, */ EmbeddedContext embeddedContext)
         : m_freerdp(freerdp_new())
           , m_rdpContext(0)
           , m_rdpInput(0)
@@ -327,7 +327,7 @@ namespace wsgate {
           , m_bThreadLoop(false)
           , m_worker()
           , m_wshandler(h)
-          , m_rsh(rsh)
+          //, m_rsh(rsh)
           , m_errMsg()
           , m_State(STATE_INITIAL)
           , m_pUpdate(new Update(h))
@@ -469,10 +469,10 @@ namespace wsgate {
         return true;
     }
 
-    void RDP::OnWsMessage(const string & data)
+    void RDP::OnWsMessage(const char* data, size_t length)
     {
-        if ((STATE_CONNECTED == m_State) && (data.length() >= 4)) {
-            const uint32_t *op = reinterpret_cast<const uint32_t *>(data.data());
+        if ((STATE_CONNECTED == m_State) && (length >= 4)) {
+            const uint32_t *op = reinterpret_cast<const uint32_t *>(data);
             switch (*op) {
                 case WSOP_CS_SPECIALCOMB:
                     {
@@ -481,7 +481,7 @@ namespace wsgate {
                             uint32_t code;
                         } wsmsg;
 
-                        const wsmsg *m = reinterpret_cast<const wsmsg *>(data.data());
+                        const wsmsg *m = reinterpret_cast<const wsmsg *>(data);
                         log::debug << "Special combination sent: " << m->code << endl;
                         std::vector< std::pair< UINT16, UINT16 > > actionList;
                         switch (m->code){
@@ -515,7 +515,7 @@ namespace wsgate {
                             uint32_t x;
                             uint32_t y;
                         } wsmsg;
-                        const wsmsg *m = reinterpret_cast<const wsmsg *>(data.data());
+                        const wsmsg *m = reinterpret_cast<const wsmsg *>(data);
                         m_freerdp->input->MouseEvent(m_freerdp->input, m->flags, m->x, m->y);
                     }
                     break;
@@ -526,7 +526,7 @@ namespace wsgate {
                             uint32_t down;
                             uint32_t code;
                         } wsmsg;
-                        const wsmsg *m = reinterpret_cast<const wsmsg *>(data.data());
+                        const wsmsg *m = reinterpret_cast<const wsmsg *>(data);
                         log::info << "K" << ((m->down) ? "down" : "up") << ": c=" << m->code << endl;
                         uint32_t tcode = m->code;
                         if (0 < tcode) {
@@ -550,7 +550,7 @@ namespace wsgate {
                             uint32_t shiftstate;
                             uint32_t code;
                         } wsmsg;
-                        const wsmsg *m = reinterpret_cast<const wsmsg *>(data.data());
+                        const wsmsg *m = reinterpret_cast<const wsmsg *>(data);
 
                         uint32_t tcode = m->code;
                         log::info << "Kpress c=0x" << hex << m->code << ", ss=0x" << m->shiftstate << dec << endl;
@@ -610,10 +610,10 @@ namespace wsgate {
                     }
                     break;
                 case WSOP_CS_UNICODE:
-                    const uint32_t* unicodeString = reinterpret_cast<const uint32_t*>(data.data());
+                    const uint32_t* unicodeString = reinterpret_cast<const uint32_t*>(data);
                     //skip the header // WSOP_CS_UNICODE
                     unicodeString++;
-                    unsigned int len = data.length() / 4 - 1;
+                    unsigned int len = length / 4 - 1;
                     for(int i=0; i < len; i++){
                         freerdp_input_send_unicode_keyboard_event(m_rdpInput, KBD_FLAGS_DOWN, (UINT16) unicodeString[i]);
                         freerdp_input_send_unicode_keyboard_event(m_rdpInput, KBD_FLAGS_RELEASE, (UINT16) unicodeString[i]);
@@ -621,6 +621,7 @@ namespace wsgate {
                     break;
             }
         }
+        /*
         if ((STATE_INITIAL == m_State) && (data.length() >= 4) && (this->getEmbeddedContext() == CONTEXT_PLAIN)) {
             const uint32_t *op = reinterpret_cast<const uint32_t *>(data.data());
             switch (*op) {
@@ -663,7 +664,7 @@ namespace wsgate {
                             params.height = 768;
                         }
                     }
-                    this->m_rsh->PrepareRDP(host, pcb, user, pass, params);
+                    /// TODO ... this->m_rsh->PrepareRDP(host, pcb, user, pass, params);
                 }
                 catch (exception &e){
                     log::err << "Error starting RDP session:" << e.what() << std::endl;
@@ -671,6 +672,7 @@ namespace wsgate {
                 break;
             }
         }
+        */
     }
 
     bool RDP::CheckFileDescriptor()
@@ -749,7 +751,7 @@ namespace wsgate {
         m_rdpSettings = inst->settings;
 
         //mrd: return value not used. just set it to 0
-        return 0;
+        return 1;
     }
 
     // private
@@ -760,11 +762,11 @@ namespace wsgate {
             cache_free(ctx->cache);
             ctx->cache = NULL;
         }
-        wsgContext *wctx = reinterpret_cast<wsgContext *>(ctx);
+        /*wsgContext *wctx = reinterpret_cast<wsgContext *>(ctx);
         if (NULL != wctx->clrconv) {
             freerdp_clrconv_free(wctx->clrconv);
             wctx->clrconv = NULL;
-        }
+        }*/
     }
 
     // private
@@ -822,8 +824,8 @@ namespace wsgate {
 
         m_rdpSettings->GlyphSupportLevel = GLYPH_SUPPORT_NONE;
 
-        reinterpret_cast<wsgContext*>(m_freerdp->context)->clrconv =
-            freerdp_clrconv_new(CLRCONV_ALPHA|CLRCONV_INVERT);
+        /*reinterpret_cast<wsgContext*>(m_freerdp->context)->clrconv =
+            freerdp_clrconv_new(CLRCONV_ALPHA|CLRCONV_INVERT); */
 
         m_freerdp->context->cache = cache_new(m_freerdp->settings);
 
@@ -837,7 +839,7 @@ namespace wsgate {
 
         ostringstream oss;
         oss << "S:" << hex << this;
-        m_wshandler->send_text(oss.str());
+        m_wshandler->send_text(oss.str().c_str());
         rdpPointer p;
         memset(&p, 0, sizeof(p));
         p.size = sizeof(MyPointer);
@@ -855,7 +857,7 @@ namespace wsgate {
             msg.append("E:");
         }
         msg.append("RDP session connection started.");
-        m_wshandler->send_text(msg);
+        m_wshandler->send_text(msg.c_str());
         //make sure that the client gets the resize event
         m_freerdp->update->DesktopResize(m_freerdp->context);
 
@@ -884,18 +886,20 @@ namespace wsgate {
             << " w=" << pointer->width << " h=" << pointer->height
             << " hx=" << pointer->xPos << " hy=" << pointer->yPos << endl;
 #endif
-        HCLRCONV hclrconv = reinterpret_cast<wsgContext *>(context)->clrconv;
+        // HCLRCONV hclrconv = reinterpret_cast<wsgContext *>(context)->clrconv;
         size_t psize = pointer->width * pointer->height * 4;
 
         MyPointer *p = reinterpret_cast<MyPointer *>(pointer);
         p->id = m_ptrId++;
         uint8_t *pixels = new uint8_t[psize];
         memset(pixels, 0, psize);
+        /* // TODO ...
         if ((pointer->andMaskData != 0) && (pointer->xorMaskData != 0)) {
             freerdp_alpha_cursor_convert(pixels,
                     pointer->xorMaskData, pointer->andMaskData,
                     pointer->width, pointer->height, pointer->xorBpp, hclrconv);
         }
+        // */
 
         //check if the cursor is fully transparent
         bool transparent = true;
@@ -943,15 +947,18 @@ namespace wsgate {
             0x00,
             0x01,
             0x00,
-            pointer->width,
-            pointer->height,
+            static_cast<byte>(pointer->width),
+            static_cast<byte>(pointer->height),
             0x00,
             0x00,
-            pointer->xPos,
-            pointer->xPos >> 8,
-            pointer->yPos,
-            pointer->yPos >>8,
-            png_string.length(), png_string.length() >> 8, png_string.length() >> 16, png_string.length() >> 24,
+            static_cast<byte>(pointer->xPos),
+            static_cast<byte>(pointer->xPos >> 8),
+            static_cast<byte>(pointer->yPos),
+            static_cast<byte>(pointer->yPos >>8),
+            static_cast<byte>(png_string.length()),
+            static_cast<byte>(png_string.length() >> 8),
+            static_cast<byte>(png_string.length() >> 16),
+            static_cast<byte>(png_string.length() >> 24),
             0x16,
             0x00,
             0x00,
@@ -979,8 +986,7 @@ namespace wsgate {
             pointer->xPos,
             pointer->yPos
         };
-        string buf(reinterpret_cast<const char *>(&tmp), sizeof(tmp));
-        m_wshandler->send_binary(buf);
+        m_wshandler->send_binary_t(tmp);
     }
 
     // private
@@ -1004,8 +1010,7 @@ namespace wsgate {
             };
             m_cursorMap.erase(p->id);
             p->id = 0;
-            string buf(reinterpret_cast<const char *>(&tmp), sizeof(tmp));
-            m_wshandler->send_binary(buf);
+            m_wshandler->send_binary_t(tmp);
         }
     }
 
@@ -1023,8 +1028,7 @@ namespace wsgate {
             WSOP_SC_PTR_SET,
             p->id
         };
-        string buf(reinterpret_cast<const char *>(&tmp), sizeof(tmp));
-        m_wshandler->send_binary(buf);
+        m_wshandler->send_binary_t(tmp);
     }
 
     // private
@@ -1033,9 +1037,7 @@ namespace wsgate {
 #ifdef DBGLOG_POINTER_SETNULL
         log::debug << "PN" << endl;
 #endif
-        uint32_t op = WSOP_SC_PTR_SETNULL;
-        string buf(reinterpret_cast<const char *>(&op), sizeof(op));
-        m_wshandler->send_binary(buf);
+        m_wshandler->send_binary_t((uint32_t)WSOP_SC_PTR_SETNULL);
     }
 
     // private
@@ -1044,9 +1046,7 @@ namespace wsgate {
 #ifdef DBGLOG_POINTER_SETDEFAULT
         log::debug << "PD" << endl;
 #endif
-        uint32_t op = WSOP_SC_PTR_SETDEFAULT;
-        string buf(reinterpret_cast<const char *>(&op), sizeof(op));
-        m_wshandler->send_binary(buf);
+        m_wshandler->send_binary_t((uint32_t)WSOP_SC_PTR_SETDEFAULT);
     }
 
     // private
@@ -1095,7 +1095,7 @@ namespace wsgate {
                     errorMsg = "E:";
                 }
                 errorMsg.append(m_errMsg);
-                m_wshandler->send_text(errorMsg);
+                m_wshandler->send_text(errorMsg.c_str());
                 m_errMsg.clear();
             }
             if (freerdp_shall_disconnect(m_freerdp)) {
@@ -1132,6 +1132,7 @@ namespace wsgate {
         if (self) {
             return self->ContextNew(inst, ctx);
         }
+        return 0;
     }
 
     void *RDP::cbThreadFunc(void *ctx)

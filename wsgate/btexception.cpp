@@ -29,6 +29,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <pthread.h>
+#include <execinfo.h>
 
 #ifdef HAVE_EXECINFO_H
 # include <execinfo.h>
@@ -47,8 +48,7 @@ extern "C" {
 #define DMGL_JAVA        (1 << 2)       /* Demangle as Java rather than C++. */
 #define DMGL_VERBOSE     (1 << 3)       /* Include implementation details.  */
 #define DMGL_TYPES       (1 << 4)       /* Also try to demangle type encodings.  */
-#define DMGL_RET_POSTFIX (1 << 5)       /* Print function return types (when
-                                           present) after function signature */
+#define DMGL_RET_POSTFIX (1 << 5)       /* Print function return types (when present) after function signature */
     extern char *cplus_demangle(const char *, int);
 }
 

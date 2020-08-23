@@ -32,10 +32,10 @@
 #include <vector>
 #include <map>
 
-#ifdef HAVE_SYSLOG_H
+#if __has_include(<syslog.h>)
 # include <syslog.h>
 #endif
-#ifdef HAVE_WINDOWS_H
+#if __has_include(<windows.h>)
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
 #endif

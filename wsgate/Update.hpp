@@ -20,7 +20,9 @@
 #ifndef _WSGATE_UPDATE_H_
 #define _WSGATE_UPDATE_H_
 
-#include "wshandler.hpp"
+// #include "wshandler.hpp"
+
+#include "lib_wshandler.hpp"
 
 typedef struct rdp_freerdp freerdp;
 typedef struct rdp_context rdpContext;
@@ -40,7 +42,7 @@ namespace wsgate {
              * Constructs a new instance.
              * @param h A pointer to the corresponding wshandler object.
              */
-            Update(wspp::wshandler *h);
+            Update(libwsgate::wshandler *h);
 
             /// Destructor.
             virtual ~Update();
@@ -52,7 +54,7 @@ namespace wsgate {
             void Register(freerdp *rdp);
 
         private:
-            wspp::wshandler *m_wshandler;
+            libwsgate::wshandler *m_wshandler;
 
             // Non-copyable
             Update(const Update &);

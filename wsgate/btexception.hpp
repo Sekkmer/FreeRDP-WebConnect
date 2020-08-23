@@ -20,6 +20,8 @@
 #ifndef BTEXCEPTION_H
 #define BTEXCEPTION_H
 
+#define USE_BFD
+
 #include <exception>
 #include <string>
 

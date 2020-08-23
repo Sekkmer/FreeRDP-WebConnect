@@ -20,6 +20,8 @@
 #ifndef _WSGATE_PRIMARY_H_
 #define _WSGATE_PRIMARY_H_
 
+#include "lib_wshandler.hpp"
+
 namespace wsgate {
 
     /**
@@ -33,7 +35,7 @@ namespace wsgate {
              * Constructs a new instance.
              * @param h A pointer to the corresponding wshandler object.
              */
-            Primary(wspp::wshandler *h);
+            Primary(libwsgate::wshandler *h);
 
             /// Destructor
             virtual ~Primary();
@@ -45,7 +47,7 @@ namespace wsgate {
             void Register(freerdp *rdp);
 
         private:
-            wspp::wshandler *m_wshandler;
+            libwsgate::wshandler *m_wshandler;
 
             // Non-copyable
             Primary(const Primary &);

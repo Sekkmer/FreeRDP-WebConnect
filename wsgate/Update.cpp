@@ -27,12 +27,13 @@
 
 #include "rdpcommon.hpp"
 #include "Update.hpp"
+#include "lib_freerdp_helper.hpp"
 
 namespace wsgate {
 
     using namespace std;
 
-    Update::Update(wspp::wshandler *h)
+    Update::Update(libwsgate::wshandler *h)
         : m_wshandler(h)
     { }
 
@@ -59,37 +60,35 @@ namespace wsgate {
 #ifdef DBGLOG_BEGINPAINT
         log::debug << "BP" << endl;
 #endif
-        uint32_t op = WSOP_SC_BEGINPAINT;
-        string buf(reinterpret_cast<const char *>(&op), sizeof(op));
-        m_wshandler->send_binary(buf);
+        m_wshandler->send_binary_t((uint32_t)WSOP_SC_BEGINPAINT);
     }
 
     void Update::EndPaint(rdpContext*) {
 #ifdef DBGLOG_ENDPAINT
         log::debug << "EP" << endl;
 #endif
-        uint32_t op = WSOP_SC_ENDPAINT;
-        string buf(reinterpret_cast<const char *>(&op), sizeof(op));
-        m_wshandler->send_binary(buf);
+        m_wshandler->send_binary_t((uint32_t)WSOP_SC_ENDPAINT);
     }
 
     void Update::SetBounds(rdpContext*, rdpBounds* bounds) {
-        rdpBounds lB;
-        uint32_t op = WSOP_SC_SETBOUNDS;
+        struct {
+            uint32_t op;
+            rdpBounds lB;
+        } tmp = {
+            WSOP_SC_SETBOUNDS
+        };
         if (bounds) {
-            memcpy(&lB, bounds, sizeof(rdpBounds));
-            lB.right++;
-            lB.bottom++;
+            memcpy(&tmp.lB, bounds, sizeof(rdpBounds));
+            tmp.lB.right++;
+            tmp.lB.bottom++;
         } else {
-            memset(&lB, 0, sizeof(rdpBounds));
+            memset(&tmp.lB, 0, sizeof(rdpBounds));
         }
 #ifdef DBGLOG_SETBOUNDS
-        log::debug << "CL l: " << lB.left << " t: " << lB.top
-            << " r: " << lB.right << " b: " << lB.bottom << endl;
+        log::debug << "CL l: " << tmp.lB.left << " t: " << tmp.lB.top
+            << " r: " << tmp.lB.right << " b: " << tmp.lB.bottom << endl;
 #endif
-        string buf(reinterpret_cast<const char *>(&op), sizeof(op));
-        buf.append(reinterpret_cast<const char *>(&lB), sizeof(lB));
-        m_wshandler->send_binary(buf);
+        m_wshandler->send_binary_t(tmp);
     }
 
     void Update::Synchronize(rdpContext*) {
@@ -104,7 +103,7 @@ namespace wsgate {
 		sendMsg.append("x");
 		sendMsg.append(std::to_string(m_rdpContext->settings->DesktopHeight));
 
-		m_wshandler->send_text(sendMsg);
+		m_wshandler->send_text(sendMsg.c_str());
     }
 
     void Update::BitmapUpdate(rdpContext*, BITMAP_UPDATE* bitmap) {
@@ -136,15 +135,16 @@ namespace wsgate {
                 freerdp_image_flip(bmd->bitmapDataStream, bmd->bitmapDataStream,
                         bmd->width, bmd->height, bmd->bitsPerPixel);
             }
-            string buf(reinterpret_cast<const char *>(&wxbm), sizeof(wxbm));
-            buf.append(reinterpret_cast<const char *>(bmd->bitmapDataStream),
-                    bmd->bitmapLength);
+            const auto ptr = new byte[sizeof(wxbm) + bmd->bitmapLength];
+            std::memcpy(ptr, &wxbm, sizeof(wxbm));
+            std::memcpy(ptr + sizeof(wxbm), bmd->bitmapDataStream, bmd->bitmapLength);
 #ifdef DBGLOG_BITMAP
             log::debug << "BM" << (wxbm.cf ? " C " : " U ") << "x="
                 << wxbm.x << " y=" << wxbm.y << " w=" << wxbm.w << " h=" << wxbm.h
                 << " bpp=" << wxbm.bpp << " dw=" << wxbm.dw << " dh=" << wxbm.dh << endl;
 #endif
-            m_wshandler->send_binary(buf);
+            m_wshandler->send_binary(ptr, sizeof(wxbm) + bmd->bitmapLength);
+            delete[] ptr;
         }
     }
 

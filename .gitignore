@@ -94,3 +94,6 @@ cmake_install.cmake
 *.dir
 Release
 Win32
+
+build
+.vscode
